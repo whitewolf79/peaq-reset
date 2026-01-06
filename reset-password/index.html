@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PeaQ — Open app to reset password</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 20px; color: #222; }
+    .card { max-width:720px; margin: 20px auto; }
+    h1 { font-size: 20px; margin-bottom: 12px; }
+    p { margin: 8px 0; }
+    .btn { display:inline-block; padding:10px 14px; background:#1E90FF; color:#fff; text-decoration:none; border-radius:6px; }
+    .muted { color:#666; font-size:14px; }
+    code { display:block; background:#f6f6f6; padding:8px; border-radius:6px; word-break:break-all; margin-top:8px;}
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Open PeaQ to reset your password</h1>
+    <p class="muted">We are attempting to open your PeaQ app. If it doesn't open automatically, copy the token below into the app's Reset Password screen, or tap the app link if your device supports it.</p>
+
+    <p id="status">Opening app...</p>
+
+    <p id="openBtnWrap" class="hidden">
+      <a id="openBtn" class="btn" href="#">Open in app</a>
+    </p>
+
+    <div id="fallback" class="hidden">
+      <p><strong>Token (copy this into the app if needed):</strong></p>
+      <code id="token">-</code>
+      <p>
+        <button id="copyBtn" class="btn">Copy token</button>
+        <span style="margin-left:12px;" id="copied" class="muted hidden">Copied!</span>
+      </p>
+      <p class="muted">If you can't open the app, contact support for help.</p>
+    </div>
+
+    <p style="margin-top:18px;" class="muted">If you are a developer testing: you can also open the app via adb or simctl with the peaq:// URL shown above.</p>
+  </div>
+
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token') || '';
+  const deep = `peaq://reset-password?token=${encodeURIComponent(token)}`;
+
+  const status = document.getElementById('status');
+  const openBtn = document.getElementById('openBtn');
+  const openBtnWrap = document.getElementById('openBtnWrap');
+  const fallback = document.getElementById('fallback');
+  const tokenEl = document.getElementById('token');
+  const copyBtn = document.getElementById('copyBtn');
+  const copied = document.getElementById('copied');
+
+  tokenEl.textContent = token || '(no token provided)';
+
+  // Make the app link clickable as well (may not work in all mail clients)
+  openBtn.href = deep;
+
+  // Try to open the native app. This is a simple approach that works on many devices.
+  // For browsers that block immediate navigation, provide the button so users can tap.
+  function tryOpen() {
+    // For iOS Safari: setting window.location works.
+    // For Android Chrome: setting window.location works.
+    // We also show an "Open in app" button after attempt.
+    const now = Date.now();
+    // Attempt to open
+    window.location = deep;
+
+    // Show the button and fallback after a short delay if the app didn't open
+    setTimeout(() => {
+      const elapsed = Date.now() - now;
+      // heuristics: if the page is still visible shortly after attempt, app likely did not open
+      openBtnWrap.classList.remove('hidden');
+      if (elapsed < 2000) {
+        status.textContent = 'App did not open — use the button below or copy the token.';
+        fallback.classList.remove('hidden');
+      } else {
+        status.textContent = 'App opened — you can close this page.';
+      }
+    }, 1200);
+  }
+
+  // Attach copy handler
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(token);
+      copied.classList.remove('hidden');
+      setTimeout(()=>copied.classList.add('hidden'), 2000);
+    } catch (e) {
+      alert('Copy failed — please select and copy the token manually.');
+    }
+  });
+
+  // Run tryOpen after a short delay so page finishes rendering
+  setTimeout(tryOpen, 300);
+})();
+</script>
+</body>
+</html>
